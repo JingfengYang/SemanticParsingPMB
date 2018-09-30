@@ -35,6 +35,9 @@ parser = argparse.ArgumentParser(description='Semantic Parsing')
 parser.add_argument("-s", "--savemodel", help="save model during evaluation", action="store_true", default=False)
 parser.add_argument("-t", "--test", help="only test model", action="store_true", default=False)
 parser.add_argument("-r", "--reload", help="reload model", action="store_true", default=False)
+parser.add_argument("-mp", "--minusPos", help="reload model", action="store_true", default=False)
+parser.add_argument("-md", "--minusDependency", help="reload model", action="store_true", default=False)
+parser.add_argument("-mw", "--minusWordEmbedding", help="reload model", action="store_true", default=False)
 parser.add_argument('-model', type=str, default='output_model/1.model')
 args = parser.parse_args()
 
@@ -80,7 +83,21 @@ class EncoderRNN(nn.Module):
         self.deptag_embeds=nn.Embedding(deptag_size, deptag_dim)
         self.dropout = nn.Dropout(self.dropout_p)
 
-        self.embeds2input = nn.Linear(word_dim + pretrain_dim + lemma_dim+postag_dim+deptag_dim, input_dim)
+        if args.minusPos and args.minusDependency:
+            self.embeds2input = nn.Linear(word_dim + pretrain_dim + lemma_dim, input_dim)
+        elif args.minusPos and args.minusWordEmbedding:
+            self.embeds2input = nn.Linear(deptag_dim, input_dim)
+        elif args.minusDependency and args.minusWordEmbedding:
+            self.embeds2input = nn.Linear(postag_dim, input_dim)
+        elif args.minusWordEmbedding:
+            self.embeds2input = nn.Linear( postag_dim + deptag_dim, input_dim)
+        elif args.minusPos:
+            self.embeds2input = nn.Linear(word_dim + pretrain_dim + lemma_dim + deptag_dim, input_dim)
+        elif args.minusDependency:
+            self.embeds2input = nn.Linear(word_dim + pretrain_dim + lemma_dim + postag_dim, input_dim)
+        else:
+            self.embeds2input = nn.Linear(word_dim + pretrain_dim + lemma_dim + postag_dim + deptag_dim, input_dim)
+
         self.tanh = nn.Tanh()
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=self.n_layers, bidirectional=True)
 
@@ -96,9 +113,29 @@ class EncoderRNN(nn.Module):
             self.lstm.dropout = self.dropout_p
             postag_embedded = self.dropout(postag_embedded)
             deptag_embedded=self.dropout(deptag_embedded)
+        if args.minusPos and args.minusDependency:
+            embeds = self.tanh(self.embeds2input(
+                torch.cat((word_embedded, pretrain_embedded, lemma_embedded),
+                          1))).view(len(sentence[0]), 1, -1)
+        elif args.minusPos and args.minusWordEmbedding:
+            embeds = self.tanh(self.embeds2input(deptag_embedded)).view(len(sentence[0]), 1, -1)
+        elif args.minusDependency and args.minusWordEmbedding:
+            embeds = self.tanh(self.embeds2input(postag_embedded)).view(len(sentence[0]), 1, -1)
+        elif args.minusWordEmbedding:
+            embeds = self.tanh(self.embeds2input(
+                torch.cat((postag_embedded, deptag_embedded),1))).view(len(sentence[0]), 1, -1)
+        elif args.minusPos:
+            embeds = self.tanh(self.embeds2input(
+                torch.cat((word_embedded, pretrain_embedded, lemma_embedded, deptag_embedded),
+                          1))).view(len(sentence[0]), 1, -1)
 
-        embeds = self.tanh(self.embeds2input(torch.cat((word_embedded, pretrain_embedded, lemma_embedded,postag_embedded,deptag_embedded), 1))).view(
-            len(sentence[0]), 1, -1)
+        elif args.minusDependency:
+            embeds = self.tanh(self.embeds2input(
+                torch.cat((word_embedded, pretrain_embedded, lemma_embedded, postag_embedded),
+                          1))).view(len(sentence[0]), 1, -1)
+
+        else:
+            embeds = self.tanh(self.embeds2input(torch.cat((word_embedded, pretrain_embedded, lemma_embedded,postag_embedded,deptag_embedded), 1))).view(len(sentence[0]), 1, -1)
 
         output, hidden = self.lstm(embeds, hidden)
         return output, hidden
@@ -132,7 +169,9 @@ class AttnDecoderRNN(nn.Module):
         self.dropout_p = dropout_p
 
         self.dropout = nn.Dropout(self.dropout_p)
-        self.tag_embeds = nn.Embedding(self.tags_info.all_tag_size, self.tag_dim)
+        self.tag_embeds = nn.Embedding(self.tags_info.tag_size, self.tag_dim)
+
+        self.struct2input = nn.Linear(self.hidden_dim, self.tag_dim)
 
         self.struct2rel = nn.Linear(self.hidden_dim, self.tag_dim)
         self.rel2var = nn.Linear(self.hidden_dim, self.tag_dim)
@@ -220,7 +259,12 @@ class AttnDecoderRNN(nn.Module):
                 if type(input) == types.NoneType:
                     pass
                 else:
-                    List.append(self.tag_embeds(input).unsqueeze(1))
+                    for item in input:
+                        if item<self.tag_size:
+                            List.append(self.tag_embeds(torch.tensor([item], dtype=torch.long, device=device)).unsqueeze(1))
+                        else:
+                            inputList=self.struct2input(encoder_output[item-self.tag_size])
+                            List.append(inputList.unsqueeze(1))
             embedded = torch.cat(List, 0)
             embedded = self.dropout(embedded)
 
@@ -286,11 +330,8 @@ class AttnDecoderRNN(nn.Module):
                     assert(idchoice>=self.tags_info.tag_size)
 
                 if idchoice >= self.tags_info.tag_size:
-                    ttype = idchoice - self.tags_info.tag_size
-                    idx = sentence_variable[2][ttype].view(-1).detach().tolist()[0]
-                    idx += self.tags_info.tag_size
-                    tokens.append(idx)
-                    input = torch.tensor([idx],dtype=torch.long, device=device)
+                    tokens.append(idchoice)
+                    idx = idchoice
                 else:
                     idx=idchoice
                     tokens.append(idx)
@@ -303,7 +344,11 @@ class AttnDecoderRNN(nn.Module):
                     break
                 rel += 1
                 self.total_rel += 1
-                embedded = self.tag_embeds(input).view(1, 1, -1)
+                if idx<self.tags_info.tag_size:
+                    embedded = self.tag_embeds(input).view(1, 1, -1)
+                else:
+                    inputList = self.struct2input(encoder_output[idx - self.tag_size])
+                    embedded=inputList.unsqueeze(1)
             assert(len(tokens)==len(hidden_reps))
 
             return torch.tensor(tokens,dtype=torch.long, device=device), torch.cat(hidden_reps, 0), hidden
@@ -425,8 +470,8 @@ def train(sentence_variable, input_variables, gold_variables, mask_variables, en
         if type(input_variables[1][j]) == types.NoneType:
             pass
         else:
-            for k in range(input_variables[1][j].size(0)):
-                if k<input_variables[1][j].size(0)-1 and input_variables[1][j][k+1]==17:
+            for k in range(len(input_variables[1][j])):
+                if k<len(input_variables[1][j])-1 and input_variables[1][j][k+1]==17:
                     i+=1
                     continue
                 if input_variables[1][j][k]==17:
@@ -597,6 +642,7 @@ def trainIters(trn_instances, dev_instances, tst_instances, encoder, decoder, pr
         sentence_variables[-1].append(instance[2].to(device))
         sentence_variables[-1].append(instance[7].to(device))
         sentence_variables[-1].append(instance[8].to(device))
+        sentence_variables[-1].append(instance[9])
 
         input1_variables.append(torch.tensor([0] + instance[3],dtype=torch.long, device=device))
         gold1_variables.append(torch.tensor(instance[3] + [1],dtype=torch.long, device=device))
@@ -612,7 +658,7 @@ def trainIters(trn_instances, dev_instances, tst_instances, encoder, decoder, pr
                 if len(instance[4][p]) == 0:
                     input2_variable.append(None)
                 else:
-                    input2_variable.append(torch.tensor([x[1] for x in instance[4][p]],dtype=torch.long, device=device))
+                    input2_variable.append([idx if type==-2 else type + decoder.tags_info.tag_size for type, idx in instance[4][p]])
                 p += 1
         input2_variables.append(input2_variable)
 
@@ -732,6 +778,7 @@ def trainIters(trn_instances, dev_instances, tst_instances, encoder, decoder, pr
         dev_sentence_variables[-1].append(instance[2].to(device))
         dev_sentence_variables[-1].append(instance[7].to(device))
         dev_sentence_variables[-1].append(instance[8].to(device))
+        dev_sentence_variables[-1].append(instance[9])
 
 
         dev_input1_variables.append(torch.tensor([0] + instance[3], dtype=torch.long, device=device))
@@ -749,7 +796,7 @@ def trainIters(trn_instances, dev_instances, tst_instances, encoder, decoder, pr
                     dev_input2_variable.append(None)
                 else:
                     dev_input2_variable.append(
-                        torch.tensor([x[1] for x in instance[4][p]],dtype=torch.long, device=device))
+                        [idx if type == -2 else type + decoder.tags_info.tag_size for type, idx in instance[4][p]])
                 p += 1
         dev_input2_variables.append(dev_input2_variable)
         sel_gen_relations = []
@@ -849,6 +896,7 @@ def trainIters(trn_instances, dev_instances, tst_instances, encoder, decoder, pr
         tst_sentence_variable.append(instance[2].to(device))
         tst_sentence_variable.append(instance[7].to(device))
         tst_sentence_variable.append(instance[8].to(device))
+        tst_sentence_variable.append(instance[9])
 
         tst_sentence_variables.append(tst_sentence_variable)
 
@@ -950,17 +998,17 @@ def evaluate(sentence_variables, encoder, decoder, path):
                 assert(structs[i+1]>=decoder.tags_info.tag_size)
             else:
                 if flag==0:
-                    output.append(decoder.tags_info.ix_to_lemma[structs[i] - decoder.tags_info.tag_size]+'(')
+                    output.append(sentence_variables[idx][5][structs[i] - decoder.tags_info.tag_size]+'(')
                 else:
-                    output[-1]=output[-1][:-1]+'~'+decoder.tags_info.ix_to_lemma[structs[i] - decoder.tags_info.tag_size]+'('
+                    output[-1]=output[-1][:-1]+'~'+sentence_variables[idx][5][structs[i] - decoder.tags_info.tag_size]+'('
                     flag=0
             if (structs[i] >=14 and structs[i]<=16) or (structs[i] >= decoder.tags_info.global_start and structs[i] < decoder.tags_info.p_rel_start) \
                     or (structs[i] >= decoder.tags_info.tag_size and not structs[i+1]==17):
                 if p>=len(tokens):
                     print(structs)
                     print(tokens)
-                for idx in tokens[p]:
-                    output.append(decoder.tags_info.ix_to_tag[idx])
+                for idy in tokens[p]:
+                    output.append(decoder.tags_info.ix_to_tag[idy])
                 p += 1
         assert p == len(tokens)
         out.write(" ".join(output) + "\n")
@@ -979,7 +1027,9 @@ def test(dev_instances, tst_instances, encoder, decoder):
         dev_sentence_variable.append(instance[2].to(device))
         dev_sentence_variable.append(instance[7].to(device))
         dev_sentence_variable.append(instance[8].to(device))
+        dev_sentence_variable.append(instance[9])
         dev_sentence_variables.append(dev_sentence_variable)
+
 
 
     # ====================================== test
@@ -992,6 +1042,7 @@ def test(dev_instances, tst_instances, encoder, decoder):
         tst_sentence_variable.append(instance[2].to(device))
         tst_sentence_variable.append(instance[7].to(device))
         tst_sentence_variable.append(instance[8].to(device))
+        tst_sentence_variable.append(instance[9])
 
         tst_sentence_variables.append(tst_sentence_variable)
 

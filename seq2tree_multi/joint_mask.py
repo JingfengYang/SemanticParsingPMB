@@ -164,8 +164,7 @@ class RelationMask:
 		if self.link==1:
 			assert(self.prev_word>=self.tags_info.tag_size)
 			res = self._get_zeros(self.tags_info.tag_size) + self._get_ones(self.encoder_input_size)
-			if not self.encoder_input_size == 1:
-				res[self.prev_word]=self.mask
+			res[self.prev_word]=self.mask
 		else:
 			res = self._get_zeros(self.tags_info.tag_size) + self._get_ones(self.encoder_input_size)
 			res[1] = self.need

@@ -54,15 +54,25 @@ def readfile(filename):
 						 l4, l5.split(),l6.split()))
 	return data
 
-def readpretrain(filename):
-	data = []
-	with open(filename,'r',encoding='utf-8') as r:
-		while True:
-			l = r.readline().strip()
-			if l == "":
-				break
-			data.append(l.split())
-	return data
+def readpretrain(filenameList):
+	dataList = []
+	for filename in filenameList:
+		data=[]
+		i=0
+		with open(filename, 'r', encoding='utf-8') as r:
+			while True:
+				l = r.readline().strip()
+				if l == "":
+					break
+				i+=1
+				if not (len(l.split())==2 or len(l.split())==301):
+					print(len(l.split()))
+					print(i)
+					continue
+				assert(len(l.split())==2 or len(l.split())==301)
+				data.append(l.split())
+		dataList.append(data)
+	return dataList
 
 def get_from_ix(w, to_ix, unk):
 	if w in to_ix:
@@ -73,8 +83,10 @@ def get_from_ix(w, to_ix, unk):
 
 def data2instance(trn_data, ixes,outPutFile):
 	instances = []
+	deleted = 0
 	writer = open(outPutFile, 'w', encoding='utf-8')
 	for one in trn_data:
+		flag=0
 		instances.append([])
 		instances[-1].append(torch.tensor([get_from_ix(w, ixes[0][0], ixes[0][1]) for w in one[0]],dtype=torch.long, device=device))
 		instances[-1].append(torch.tensor([get_from_ix(w, ixes[1][0], ixes[1][1]) for w in one[1]],dtype=torch.long, device=device))
@@ -131,6 +143,25 @@ def data2instance(trn_data, ixes,outPutFile):
 					stack.append((idx, -2, -1))
 			else:
 				if '~' in item[:-1]:
+					flag2 = 0
+					for iy in item[:-1].split('~'):
+						if not iy in one[2]:
+							print('item:', (len(instances) + deleted) * 7, item[:-1], iy)
+							instances = instances[:-1]
+							deleted += 1
+							flag = 1
+							flag2 = 1
+							break
+					if flag2 == 1:
+						break
+				else:
+					if not item[:-1] in one[2]:
+						print('item:', (len(instances) + deleted) * 7, item[:-1])
+						instances = instances[:-1]
+						deleted += 1
+						flag = 1
+						break
+				if '~' in item[:-1]:
 					listS=[]
 					tokens=item[:-1].split('~')
 					for token in tokens:
@@ -146,7 +177,8 @@ def data2instance(trn_data, ixes,outPutFile):
 					idx = instances[-1][2].tolist()[type] + ixes[3].tag_size
 					assert type != -1 and idx != -1, "unrecogized local relation"
 					stack.append((idx, type, -1))
-
+		if flag == 1:
+			continue
 
 		instances[-1].append([])
 		for item in one[6]:
@@ -224,6 +256,8 @@ def data2instance(trn_data, ixes,outPutFile):
 			print(instances[-1][0])
 			print(len(instances*7))
 		assert(instances[-1][7].size(0)==instances[-1][0].size(0))
+		assert (len(instances[-1][8]) == instances[-1][0].size(0))
+		assert (len(instances[-1][9]) == instances[-1][0].size(0))
 		writer.write(' '.join(one[6]) + '\n')
 	writer.close()
 	return instances

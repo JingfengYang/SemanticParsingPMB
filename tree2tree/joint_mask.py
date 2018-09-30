@@ -37,10 +37,10 @@ class OuterMask:
 			#not, nec, pos
 			return self._get_1_mask()
 		elif self.stack[-1] in [8,9]:
-			#results continuation explanation contrast
+			#or, imp, duplex
 			return self._get_2_mask()
 		elif self.stack[-1] in [10,11,12,13]:
-			#or, imp, duplex
+			#results continuation explanation contrast
 			return self._get_2_mask()
 		elif self.stack[-1] == self.tags_info.p_rel_start:
 			#p
@@ -60,12 +60,12 @@ class OuterMask:
 	def _get_sdrs_mask(self):
 		#SDRS
 		if self.stack_ex[-1][self.four_offset] < 1:
-			#only one relation
 			re = self._get_zeros(self.tags_info.tag_size)
 			re[10] = self.need
 			re[11] = self.need
 			re[12] = self.need
 			re[13] = self.need
+
 			return re
 		else:
 			#only reduce
@@ -150,7 +150,6 @@ class RelationMask:
 		self.need = 1
 		self.SOS=-1
 		self.reset(encoder_input_size)
-
 	def reset(self, encoder_input_size):
 		self.encoder_input_size = encoder_input_size
 		self.is_sdrs = False
@@ -201,6 +200,7 @@ class VariableMask:
 		self.tags_info = tags_info
 		self.mask = 0
 		self.need = 1
+
 		self.reset(0)
 
 	def reset(self, p_max):
@@ -264,7 +264,6 @@ class VariableMask:
 				idx += 1
 
 			return re
-
 		elif self.prev_prev_variable == -1:
 			re = self._get_zeros(self.tags_info.tag_size)
 			re[1] = self.need
