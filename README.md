@@ -5,6 +5,7 @@
 2. Copy `train_input.txtRaw` to PMB2/gold
 3. Copy `dev_input.txtRaw` to PMB2/gold
 4. Copy `test_input.txtRaw` to PMB2/gold
+
 ###Pre-processing
 1. 
 >cd PMB2/gold
@@ -14,6 +15,7 @@
 >python replaceCard.py -src test_input.txtRaw -trg test_input.txt
 3. Generate the global condition tag file `tag.txt` from the training data
 >python globalRel.py
+
 ###Run
 1. 
 >`cd seq2tree` (or `cd tree2tree`  or `cd tree2treePos` or `cd seqtree2tree`)
@@ -26,14 +28,15 @@
 	-mp  if delete the Universal POS tags as features?  default=False
 	-md  if delete the Universal Dependency tags as features?  default=False
 	-mw  if delete the word embeddings as features?  default=False
-	-model
+	-model the model name   default='output_model/1.model'
 ```
 3. use Ctrl+c to stop the training
+
 ###Evaluation
 The devlopment and test results after each epoch are listed in output_dev and output_tst respectively. Firstly, choose the epoch which performs best on the devlopment set. Then get the test results on the test set. 
 Evaluate on the development set.
 1. 
->`cd seq2tree/output_dev`
+>`cd seq2tree/output_dev` (or `cd tree2tree/output_dev`  or `cd tree2treePos/output_dev` or `cd seqtree2tree/output_dev`)
 2. Transform the formation of the result Discourse Representation Structure to lines which fit to Counter, and generate the rough scores by comparing each line of the two files. Choose the epoch (file) i with the highest f-score as the i of the next step.
 >python convertAndRoughTest.py 
 ```
@@ -47,6 +50,7 @@ Evaluate on the development set.
 > python ../../DRS_parsing/counter.py -f1 i.test -f2 dev.test -pr -prin -ms (> i.results)
 
 Evaluate on the test set. (Roughly the same as the evaluation on the development set.)
+
 ###Error analysis
 1. 
 >jupyter-notebook
