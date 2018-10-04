@@ -13,7 +13,9 @@
 >cd PMB2/gold
 2. 
 >python replaceCard.py
+
 >python replaceCard.py -src dev_input.txtRaw -trg dev_input.txt
+
 >python replaceCard.py -src test_input.txtRaw -trg test_input.txt
 3. Generate the global condition tag file `tag.txt` from the training data
 >python globalRel.py
@@ -67,9 +69,9 @@ Evaluate on the test set. (Roughly the same as the evaluation on the development
 2. Copy `wiki.multi.it.vec.txt` to PMB_multi
 3. Copy `wiki.multi.nl.vec.txt` to PMB_multi
 4. Copy `wiki.multi.en.vec.txt` to PMB_multi
-5. Copy `de.input' to PMB_multi/PMB_de_v2/PMB/gold
-6. Copy `nl.input' to PMB_multi/PMB_nl_v2/PMB/gold
-7. Copy `it.input' to PMB_multi/PMB_it_v2/PMB/gold
+5. Copy `de.input` to PMB_multi/PMB_de_v2/PMB/gold
+6. Copy `nl.input` to PMB_multi/PMB_nl_v2/PMB/gold
+7. Copy `it.input` to PMB_multi/PMB_it_v2/PMB/gold
 
 
 ### Pre-processing
@@ -77,6 +79,7 @@ Evaluate on the test set. (Roughly the same as the evaluation on the development
 >cd PMB2/gold
 2. 
 >python replaceCard.py
+
 >python replaceCard.py -src dev_input.txtRaw -trg dev_input.txt
 3. Generate the global condition tag file `tag.txt` from the training data
 >python globalRel.py
