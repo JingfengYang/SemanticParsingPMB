@@ -1,17 +1,11 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
 from __future__ import unicode_literals, print_function, division
 from io import open
-import argparse
 import re
-rel=[]
-
-parser = argparse.ArgumentParser(description='Preprocess')
+parser = argparse.ArgumentParser(description='Test')
 parser.add_argument('-src', type=str, default='train_input.txtRaw')
 parser.add_argument('-trg', type=str, default='train_input.txt')
 args = parser.parse_args()
-
+rel=[]
 with open(args.src, 'r', encoding='utf-8') as r, open(args.trg, 'w', encoding='utf-8') as w:
     while True:
         l1 = r.readline()
