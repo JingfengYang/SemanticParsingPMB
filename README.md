@@ -1,12 +1,14 @@
 # SemanticParsingPMB
-##Mono-lingual Semantic parsing
+
+## Mono-lingual Semantic parsing
+
 ### Preparation
 1. Copy `sskip.100.vectors` to PMB2/gold
 2. Copy `train_input.txtRaw` to PMB2/gold
 3. Copy `dev_input.txtRaw` to PMB2/gold
 4. Copy `test_input.txtRaw` to PMB2/gold
 
-###Pre-processing
+### Pre-processing
 1. 
 >cd PMB2/gold
 2. 
@@ -16,7 +18,7 @@
 3. Generate the global condition tag file `tag.txt` from the training data
 >python globalRel.py
 
-###Run
+### Run
 1. 
 >`cd seq2tree` (or `cd tree2tree`  or `cd tree2treePos` or `cd seqtree2tree`)
 2. 
@@ -32,7 +34,7 @@
 ```
 3. use Ctrl+c to stop the training
 
-###Evaluation
+### Evaluation
 The devlopment and test results after each epoch are listed in output_dev and output_tst respectively. Firstly, choose the epoch which performs best on the devlopment set. Then get the test results on the test set. 
 Evaluate on the development set.
 1. 
@@ -51,7 +53,7 @@ Evaluate on the development set.
 
 Evaluate on the test set. (Roughly the same as the evaluation on the development set.)
 
-###Error analysis
+### Error analysis
 1. 
 >jupyter-notebook
 2. Change the file name in the 3rd and 4th cell an run the first 4 cells
