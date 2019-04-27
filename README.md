@@ -136,5 +136,5 @@ Evaluate on the nl/de/it test set. (Roughly the same as the evaluation on the de
 2. Open analysis_dmatch.ipynb
 3. Change the file name in the 3rd and 4th cell an run the first 4 cells
 
-# Acknowledgments
+## Acknowledgments
 The code is based on the code in [EdinburghNLP/EncDecDRSparsing](https://github.com/EdinburghNLP/EncDecDRSparsing).
